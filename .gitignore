@@ -1,0 +1,54 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Licensed Match Data & Footage (STRICT: Never commit licensed hackathon data)
+data/
+*.mp4
+*.ts
+*.avi
+*.mov
+*_tactical_atd.txt
+*_tactical_atd.xml
+*_tactical_homography.csv
+*_tactical_smart_tagging.xml
+*_broadcast_*.txt
+*_broadcast_*.xml
+*_broadcast_*.csv
+
+# Generated Match Predictions & Decision Logs
+outputs/
+*.csv
+*.tsv
+*.jsonl
+
+# Vendor & local official checkouts
+vendor/
+.official_repo/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Testing & distribution caches
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/

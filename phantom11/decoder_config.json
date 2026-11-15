@@ -1,0 +1,23 @@
+{
+  "description": "PHANTOM-11 Step 7 Sequence Decoder Configuration",
+  "version": "v3",
+  "fps": 25.0,
+  "parameters": {
+    "lambda_turnover": 3.8,
+    "lambda_stoppage": 3.0,
+    "lambda_restart": 3.0,
+    "min_sustained_frames": 12,
+    "evidence_weight": 0.6,
+    "v2_prior_cost": 1.0,
+    "carrier_dead_ball_penalty": 2.5
+  },
+  "physical_justifications": {
+    "lambda_turnover": "Base penalty for switching team possession. At 25 fps, equivalent to ~0.5s of strong contradictory evidence.",
+    "lambda_stoppage": "Base penalty for transitioning to Dead Ball (D), modulated by ball visibility and Smart Tagging set-piece windows.",
+    "lambda_restart": "Base penalty for transitioning from Dead Ball to Live Play, modulated by ball presence and active player touch.",
+    "min_sustained_frames": "12 frames (0.48s). Fleeting micro-islands shorter than this without sustained carrier support are regularized.",
+    "evidence_weight": "Weight of physical control evidence scores (score_h, score_a) in emission cost modulation.",
+    "v2_prior_cost": "Baseline penalty when proposed state disagrees with grounded v2 candidate.",
+    "carrier_dead_ball_penalty": "Penalty forbidding Dead Ball declaration when a player is actively dribbling the ball."
+  }
+}

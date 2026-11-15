@@ -1,0 +1,4 @@
+# PHANTOM-11 Dependencies
+# Tested on Python 3.11 and 3.12 (standard CPU, dependency-free numerical stack)
+numpy>=1.26.0,<2.3.0
+pandas>=2.0.0,<3.2.0
