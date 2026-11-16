@@ -70,6 +70,9 @@ def compute_control_evidence(
     smart_tagging_events,
     non_play_intervals=None,
     fps=25.0,
+    max_carrier_dist=None,
+    max_carrier_rel_speed=None,
+    min_carrier_alignment=None,
 ):
     """Compute frame-by-frame team-control evidence scores and diagnostic reason codes.
 
@@ -116,6 +119,14 @@ def compute_control_evidence(
     )
 
     # 2. Ball Carrier Detection
+    carrier_kwargs = {}
+    if max_carrier_dist is not None:
+        carrier_kwargs["max_dist"] = max_carrier_dist
+    if max_carrier_rel_speed is not None:
+        carrier_kwargs["max_rel_speed"] = max_carrier_rel_speed
+    if min_carrier_alignment is not None:
+        carrier_kwargs["min_alignment"] = min_carrier_alignment
+
     carrier_slot, is_carrier, carrier_conf = detect_ball_carrier(
         distances=rel_motion["distances"],
         rel_speeds=rel_motion["rel_speeds"],
@@ -124,6 +135,7 @@ def compute_control_evidence(
         player_speed=player_kin["speeds"],
         player_jump_flag=player_kin["player_jump_flag"],
         ball_jump_flag=ball_kin["ball_jump_flag"],
+        **carrier_kwargs,
     )
 
     # Map carrier slot to team

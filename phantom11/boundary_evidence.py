@@ -74,7 +74,7 @@ def extract_boundary_evidence(
         'in_non_play': (N,) bool
     """
     n_frames = len(ball_present)
-    non_play_intervals = non_play_intervals or derive_non_play_intervals()
+    non_play_intervals = derive_non_play_intervals() if non_play_intervals is None else non_play_intervals
 
     in_non_play = np.zeros(n_frames, dtype=bool)
     for s, e in non_play_intervals:

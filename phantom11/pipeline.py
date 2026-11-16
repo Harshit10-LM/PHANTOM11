@@ -48,8 +48,9 @@ def run_pipeline(
     match_config=None,
     save_intermediates=True,
     verbose=True,
+    candidate="v5a",
 ):
-    """Run the complete PHANTOM-11 pipeline and return the final v3 labels.
+    """Run the complete PHANTOM-11 pipeline and return the candidate labels.
 
     Parameters
     ----------
@@ -62,13 +63,16 @@ def run_pipeline(
     match_config : MatchConfig, optional
         Configured match structure (if None, derived from games.py and game).
     save_intermediates : bool
-        Whether to save v0, v1, v2 along with v3.
+        Whether to save intermediate candidates along with final.
     verbose : bool
         Whether to print diagnostic progress.
+    candidate : str
+        Candidate version to generate ('v0', 'v1', 'v2', 'v3', 'v4', 'v5', 'v5a').
+        Default: 'v5a' (Primary Competition Candidate).
 
     Returns
     -------
-    v3_labels : np.ndarray
+    final_labels : np.ndarray
         Array of prediction labels ('H', 'A', 'D').
     output_paths : dict
         Mapping of version to output CSV path.
@@ -270,24 +274,108 @@ def run_pipeline(
     )
 
     write_submission(v3_path, v3_labels)
-    t_end = time.time()
-
     if verbose:
-        print(f"         Saved final v3 to {v3_path}")
-        print(f"\nPipeline finished in {t_end - t_start:.2f} seconds.")
-        print(f"Total rows: {len(v3_labels):,} | Format valid: 0..{len(v3_labels)-1}")
-        print("=" * 78)
+        print(f"         Saved v3 to {v3_path}")
 
-    return v3_labels, {
+    output_paths = {
         "v0": v0_path,
         "v1": v1_path,
         "v2": v2_path,
         "v3": v3_path,
     }
+    final_labels = v3_labels
+
+    if candidate in ("v4", "v5", "v5a"):
+        from phantom11.boundary_refinement import refine_possession_boundaries
+        v4_path = os.path.join(output_dir, "phantom11_v4.csv")
+        if verbose:
+            print("\n[Step 8] Applying physical boundary refinement (v4)...")
+        v4_labels = refine_possession_boundaries(
+            labels=v3_labels,
+            ball_present=ball_present,
+            ball_xy=ball_xy,
+            is_carrier_h=ev["is_carrier_h"],
+            is_carrier_a=ev["is_carrier_a"],
+            d_h1=ev["d_h1"],
+            d_a1=ev["d_a1"],
+            ball_speed=ball_kin["speed"],
+            stoppage_support=tact["stoppage_support"],
+            non_play_intervals=non_play,
+            fps=fps,
+        )
+        if save_intermediates or candidate == "v4":
+            write_submission(v4_path, v4_labels)
+            if verbose:
+                print(f"         Saved v4 to {v4_path}")
+        output_paths["v4"] = v4_path
+        final_labels = v4_labels
+
+    if candidate in ("v5", "v5a"):
+        from phantom11.flight_handover import refine_flight_handovers
+        v5_path = os.path.join(output_dir, "phantom11_v5.csv")
+        if verbose:
+            print("\n[Step 9] Applying flight-aware possession handover (v5)...")
+        v5_labels = refine_flight_handovers(
+            labels=v4_labels,
+            ball_present=ball_present,
+            ball_xy=ball_xy,
+            players_xy=players_xy,
+            team_of_track=team_of_track,
+            d_h1=ev["d_h1"],
+            d_a1=ev["d_a1"],
+            is_carrier_h=ev["is_carrier_h"],
+            is_carrier_a=ev["is_carrier_a"],
+            ball_speed=ball_kin["speed"],
+            non_play_intervals=non_play,
+            fps=fps,
+            gate_deceleration_by_proximity=False,
+        )
+        if save_intermediates or candidate == "v5":
+            write_submission(v5_path, v5_labels)
+            if verbose:
+                print(f"         Saved v5 to {v5_path}")
+        output_paths["v5"] = v5_path
+        final_labels = v5_labels
+
+    if candidate == "v5a":
+        from phantom11.pitch_boundary import apply_pitch_boundary_clamping
+        v5a_path = os.path.join(output_dir, "phantom11_v5a.csv")
+        team_named_path = os.path.join(output_dir, "No Data No Goal.csv")
+        algo_named_path = os.path.join(output_dir, "PHANTOM-11.csv")
+        if verbose:
+            print("\n[Step 10] Applying IFAB Law 9 pitch-boundary clamping (v5-A)...")
+        v5a_labels = apply_pitch_boundary_clamping(
+            labels=v5_labels,
+            ball_xy=ball_xy,
+            ball_present=ball_present,
+            pitch=pitch,
+            non_play_intervals=non_play,
+        )
+        write_submission(v5a_path, v5a_labels)
+        write_submission(team_named_path, v5a_labels)
+        write_submission(algo_named_path, v5a_labels)
+        if verbose:
+            print(f"         Saved primary candidate v5-A to {v5a_path}")
+            print(f"         Saved official team submission to {team_named_path}")
+            print(f"         Saved algorithm-named submission to {algo_named_path}")
+        output_paths["v5a"] = v5a_path
+        output_paths["submission"] = team_named_path
+        output_paths["algo_submission"] = algo_named_path
+        final_labels = v5a_labels
+
+    t_end = time.time()
+    if verbose:
+        print(f"\nPipeline finished in {t_end - t_start:.2f} seconds.")
+        print(f"Final Candidate Generated: {candidate.upper()} ({output_paths[candidate]})")
+        print(f"Total rows: {len(final_labels):,} | Format valid: 0..{len(final_labels)-1}")
+        print("=" * 78)
+
+    return final_labels, output_paths
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PHANTOM-11 End-to-End Prediction Pipeline")
+    parser.add_argument("--candidate", "--version", default="v5a", choices=["v0", "v1", "v2", "v3", "v4", "v5", "v5a"], help="Model candidate version to generate (default: v5a)")
     parser.add_argument("--data-dir", default=None, help="Directory containing tactical data files")
     parser.add_argument("--output-dir", default=None, help="Directory to save generated CSV files")
     parser.add_argument("--official-dir", default=None, help="Path to official more-than-a-hack-2027 repository")
@@ -296,4 +384,4 @@ if __name__ == "__main__":
     if args.official_dir:
         resolve_official_repo(args.official_dir)
 
-    run_pipeline(data_dir=args.data_dir, output_dir=args.output_dir)
+    run_pipeline(data_dir=args.data_dir, output_dir=args.output_dir, candidate=args.candidate)

@@ -1,204 +1,233 @@
-# PHANTOM-11: Evidence-Aware Possession Sequence Decoding
+# PHANTOM-11 — No Data No Goal
+### Evidence-Aware Possession Sequence Decoding for Football Tracking Data
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Hackathon: More Than A Hack 2027](https://img.shields.io/badge/Competition-More%20Than%20A%20Hack%202027-orange.svg)](https://github.com/metrica-sports/more-than-a-hack-2027)
 
-**PHANTOM-11** is an evidence-aware football possession prediction and sequence decoding system developed for the **More Than A Hack 2027** competition organized by Metrica Sports.
-
-Instead of relying solely on spatial 2D proximity (who happens to be closest to the ball), PHANTOM-11 extracts physical team-control evidence (ball-player co-movement, team geometry, tactical phase priors) and solves possession inference as a constrained Hidden Semi-Markov dynamic programming sequence decoding problem.
-
----
-
-## Key Features
-
-1. **Physical Ball-Carrier Detection:** Identifies genuine ball-carrying / dribbling based on relative speed ($v_{\text{rel}} \le 2.5\text{ m/s}$) and velocity alignment ($\cos(\theta) \ge 0.40$), eliminating false turnovers when passes fly past opponents.
-2. **Conservative Missing-Ball Continuity:** Distinguishes brief visual occlusions ($\le 6.0\text{s}$) from genuine dead-ball stoppages using bilateral boundary control and displacement plausibility.
-3. **Tactical Soft Priors:** Leverages Metrica Smart Tagging phases (attacking vs. defending vs. restarts) as probabilistic soft priors without hard-coding labels.
-4. **Duration-Aware Dynamic Programming:** Formulated as a constrained Hidden Semi-Markov Model (HSMM) solved with Viterbi DP in **0.5 seconds** ($O(T \cdot K^2)$), unifying micro-flickers while preserving genuine short possessions.
-5. **Deterministic & CPU-Only:** Zero stochastic neural networks, zero GPU requirements. Reproduces exact byte-for-byte predictions in under 5 seconds.
+**Official Team Name:** No Data No Goal  
+**Algorithm:** PHANTOM-11 (Primary Candidate: `v5-A`)  
+**Competition:** More Than A Hack 2027 (Metrica Sports)  
+**Submission Deliverables:**
+* **Official Submission CSV:** `outputs/No Data No Goal.csv` (and `outputs/phantom11_v5a.csv`)
+* **Verified SHA-256 Checksum:** `6acdd06563420e135f154cff29194260f187410aacc5888fe071ccc4e9bfd6c4`
+* **Format Validator Status:** `PASSED (199,319 rows, frame 0..199318, 487 active spells, mean 8.5s)`
+* **Official Technical Paper:** [docs/No Data No Goal.md](docs/No%20Data%20No%20Goal.md)
 
 ---
 
-## Multi-Version Evolution
+## 1. Problem: The Pitfalls of Spatial Proximity
 
-| Version | Description | Total Possessions | Mean Duration | Micro-Possessions (<0.5s) | Direct Turnovers |
+In optical football tracking data, the standard baseline (`baseline_smooth50`) assigns possession to whichever player is geometrically closest to the ball in 2D coordinates, smoothed across a centered $\pm 50$-frame window ($\pm 2.0\text{s}$).
+
+While simple, this proximity-first paradigm exhibits three critical physical failures:
+1. **Spatial Proximity Collapses on Aerial Passes:** A lofted pass or cross travelling overhead at $15\text{ m/s}$ frequently passes within $2.0\text{m}$ of an opposing player on the 2D ground plane, triggering spurious turnover blips even though the opponent was meters below the ball and never made contact.
+2. **Boundary Lag & Smeared Turnovers:** Centered window smoothing averages past and future states, smearing genuine turnover points by 15–25 frames ($0.6\text{s}$ to $1.0\text{s}$) and misallocating the start of attacking sequences.
+3. **Dead-Ball & Restart Merging:** When a team kicks the ball out of bounds for a throw-in or corner kick and subsequently takes the restart, naive proximity merges the pre-stoppage play, the out-of-play interval, and the post-restart attack into a single unsegmented possession spell lasting over a minute.
+
+---
+
+## 2. Our Solution: Evidence-Aware Temporal Decoding
+
+Developed by team **No Data No Goal**, **PHANTOM-11** reformulates possession recognition as an **evidence-gated, constrained sequence decoding pipeline**.
+
+Instead of trusting raw 2D Euclidean distances, PHANTOM-11 evaluates physical ball-player relative velocities, velocity vector alignment, spatial density spheres, and pitch geometry. It solves temporal continuity as a constrained Hidden Semi-Markov Model (HSMM) via exact Viterbi dynamic programming in **$< 0.5\text{ seconds}$**, completely eliminating micro-flickers while preserving genuine short possessions ($\ge 1.0\text{s}$).
+
+```
+Raw Tracking ATD (199,319 frames) + Smart Tagging Timeline
+                       │
+                       ▼
+    [1. Ball-Carrier Kinematics & Spatial Density]
+    - Dynamic co-movement (v_rel <= 2.5 m/s, cos(theta) >= 0.40)
+    - Tracker reliability filtering & stationary traps
+                       │
+                       ▼
+    [2. Duration-Aware Dynamic Programming Decoder]
+    - Constrained Hidden Semi-Markov Model (HSMM)
+    - Exact Viterbi DP regularizing micro-flickers in < 0.5s
+                       │
+                       ▼
+    [3. Physical Boundary Refinement]
+    - Confidence-gated boundary snapping to true strike frames
+    - Elimination of fleeting deflections (< 1.0s, 0 carrier frames)
+                       │
+                       ▼
+    [4. Flight-Aware Possession Handover]
+    - Aerial pass continuity (unifying overhead transit)
+    - Premature interception alignment (delay until d <= 1.5m / trap)
+    - Immediate turnover recognition for volleys & sliding tackles
+                       │
+                       ▼
+    [5. IFAB Law 9 Pitch-Boundary Enforcement]
+    - Strict geometric pitch boundary rectangle (105.3m x 68.0m)
+    - Physical margin (0.35m) accounting for ball radius & line width
+    - Clamping out-of-bounds frames to Dead Ball ('D')
+                       │
+                       ▼
+   Official Submission: outputs/No Data No Goal.csv (199,319 frames)
+```
+
+---
+
+## 3. Core Innovations
+
+### 1. Ball-Carrier Kinematics & Spatial Evidence
+Identifies genuine ball-carrying and dribbling based on relative speed ($v_{\text{rel}} \le 2.5\text{ m/s}$) and velocity vector cosine similarity ($\cos(\theta) \ge 0.40$), preventing high-speed passes flying past opponents from being misclassified as turnovers.
+
+### 2. Hidden Semi-Markov Model with Constrained Viterbi Decoding
+Solves global temporal continuity via exact Viterbi dynamic programming ($O(T \cdot K^2)$). It penalizes rapid state thrashing during contested 50-50 duels while preserving genuine short possessions ($\ge 1.0\text{s}$).
+
+### 3. Confidence-Gated Possession Boundary Refinement
+Snaps possession change points from lagging window boundaries directly to the physical strike or tackle frame, eliminating fleeting deflections ($< 1.0\text{s}$, 0 carrier frames) without control.
+
+### 4. Flight-Aware Possession Handover
+* **Aerial Pass Continuity:** Unifies long passes in flight ($v_{\text{ball}} \ge 7.0\text{ m/s}$ / $25.2\text{ km/h}$) received downfield by a teammate within $2.5\text{m}$, eliminating spurious mid-flight opponent blips.
+* **Premature Handover Alignment:** Delays turnover recognition until the interceptor actually engages the ball ($d \le 1.5\text{m}$ or traps $v_{\text{ball}} \le 3.5\text{ m/s}$).
+* **Turnover Responsiveness:** Volleys, sliding clearances, and direct interception passes are recognized immediately at contact ($\text{spellF1} = 1.0000$).
+
+### 5. IFAB Law 9 Pitch-Boundary Detection & Dead-Ball Enforcement
+Enforces pitch geometry ($105.3\text{m} \times 68.0\text{m}$) with a calibrated $0.35\text{m}$ physical buffer (ball radius + line width + optical uncertainty). Eliminates out-of-bounds false active possessions during throw-in and corner-kick preparations ($99.01\%$ agreement with human ground truth on the public evaluation window).
+
+---
+
+## 4. Multi-Version Algorithmic Evolution
+
+| Version | Description | Active Spells | Mean Duration | Micro-Spells (<0.5s) | Direct Turnovers |
 |---|---|---:|---:|---:|---:|
 | **v0** | Baseline (Nearest Player + 50-frame Smoothing) | 669 | 7.64s | 68 | 528 |
 | **v1** | Conservative Missing-Ball Continuity + Halftime Clamping | 579 | 7.45s | 60 | 455 |
 | **v2** | Physical Movement Kinematics & Team Geometry | 629 | 6.86s | 95 | 505 |
-| **v3** | **Duration-Aware Sequence Decoder (Final Candidate)** | **493** | **8.71s** | **4** | **356** |
+| **v3** | Duration-Aware Sequence Decoder (Baseline Candidate) | 493 | 8.71s | 4 | 356 |
+| **v4** | Confidence-Gated Physical Boundary Refinement | 471 | 9.07s | 4 | 344 |
+| **v5** | Flight-Aware Possession Handover & Aerial Continuity | 431 | 9.53s | 4 | 321 |
+| **v5-A** | **IFAB Law 9 Pitch-Boundary Clamping (Primary Submission)** | **487** | **8.53s** | **4** | **321** |
 
 ---
 
-## Directory Structure
+## 5. Reproducibility: How to Run
 
-```
-PHANTOM11-public/
-├── README.md                  # Project overview and reproduction guide
-├── LICENSE                    # MIT open-source license
-├── requirements.txt           # Pinned dependencies (numpy, pandas)
-├── run_phantom11.py           # Unified reproduction entry point
-├── decoder_config.json        # Decoder hyperparameters and SI units
-├── phantom11/                 # Source package
-│   ├── __init__.py
-│   ├── match_config.py        # Reusable MatchConfig structure & validation
-│   ├── path_resolver.py       # Portable official repo & data resolver
-│   ├── pipeline.py            # End-to-end multi-stage pipeline
-│   ├── movement_features.py   # Ball/player kinematics & carrier detection
-│   ├── team_geometry.py       # Permutation-invariant team density spheres
-│   ├── tactical_tags.py       # Smart Tagging soft evidence parser
-│   ├── control_evidence.py    # Composite control scores & reason codes
-│   ├── boundary_evidence.py   # Physical change points & readiness
-│   ├── sequence_decoder.py    # Viterbi DP with duration regularization
-│   ├── continuity.py          # Missing-ball continuity algorithm
-│   └── load_tracking.py       # Structured ATD tracking loader
-├── tests/                     # 34 synthetic unit & regression tests
-│   ├── test_continuity.py     # 6 synthetic continuity tests
-│   ├── test_evidence.py       # 11 synthetic evidence & carrier tests
-│   ├── test_decoder.py        # 12 synthetic sequence decoder tests
-│   └── test_match_config.py   # 5 match configuration & validation tests
-├── docs/                      # Technical documentation
-│   ├── TECHNICAL_DOCUMENT.md  # Official submission technical paper
-│   ├── MATCH_GENERALISATION_AUDIT.md # Match decoupling & generalisation report
-│   ├── STEP6_REPORT.md        # Tactical evidence report
-│   └── STEP7_REPORT.md        # Sequence decoder report
-└── scripts/
-    ├── setup_environment.sh   # One-command fresh environment installer
-    └── fetch_official_repo.py # Fetches public official code at pinned commit
-```
-
----
-
-## Getting Started (Fresh Machine Setup)
-
-### 1. Clone this repository
+### 1. Environment Setup
+PHANTOM-11 requires standard Python 3.11 or 3.12 (standard CPU, zero GPU dependencies).
 
 ```bash
+# Clone the repository
 git clone https://github.com/Harshit10-LM/PHANTOM11.git
 cd PHANTOM11
-```
 
-### 2. Set up Python Virtual Environment
-
-```bash
+# Set up virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 3. Obtain Official Code Dependency
+*Verified dependencies: `numpy==2.2.6`, `pandas==3.1.1` (pinned ranges: `numpy>=1.26.0,<2.3.0`, `pandas>=2.0.0,<3.2.0`).*
 
-PHANTOM-11 uses the official competition asset loading specifications (`games.py`).
-To fetch the public MIT-licensed official repository at the pinned commit (`f8f2629`):
-
+### 2. Obtain Competition Code
+Fetch the public official competition assets (`games.py`, starter scripts) at the pinned commit:
 ```bash
 python scripts/fetch_official_repo.py
 ```
-*(This downloads public code only; no licensed match data is acquired).*
 
-### 4. Place the Authorized Competition Dataset
+### 3. Place Competition Data
+Place authorized match tracking files into `data/` or provide `--data-dir PATH`:
+* `BAR-ATH_tactical_atd.txt`
+* `BAR-ATH_tactical_atd.xml`
+* `BAR-ATH_tactical_smart_tagging.xml`
 
-Authorized hackathon participants obtain the licensed dataset bundle (`BAR-ATH`) through the official competition portal. Unpack the files into either:
-- `data/tactical/` inside this project, OR
-- A custom path passed via `--data-dir` or `DATA_DIR` environment variable.
+### 4. Single-Command Reproduction
+To execute the complete deterministic pipeline from scratch and regenerate the official submission file:
 
-Expected files:
+```bash
+python run_phantom11.py --candidate v5a
 ```
-BAR-ATH_tactical_atd.txt
-BAR-ATH_tactical_atd.xml
-BAR-ATH_tactical_homography.csv
-BAR-ATH_tactical_smart_tagging.xml
-```
+*Pipeline finishes in under 5 seconds on standard CPU and writes `outputs/No Data No Goal.csv`.*
 
 ---
 
-## Running Tests
+## 6. Output Validation & Automated Tests
 
-All unit tests run on synthetic in-memory data and require no licensed match assets:
-
+### Official Submission Format Validation
+Run the competition's official validator:
 ```bash
-python -m unittest discover tests
+python ../more-than-a-hack-2027/evaluation/validate_submission.py "outputs/No Data No Goal.csv"
 ```
-*Expected: 34 tests pass in ~0.6 seconds (6 continuity, 11 evidence & carrier, 12 sequence decoder, 5 match configuration).*
-
----
-
-## Multi-Match Generalisation & Architecture Readiness
-
-PHANTOM-11 is designed with a clear separation between **match configuration** and **possession prediction algorithms**:
-
-1. **Current Verified Baseline:** Operation is verified and benchmarked against the official competition fixture: **FC Barcelona vs Athletic Club (`BAR-ATH`)**.
-2. **Decoupled Architecture:** The mathematical modules (carrier co-movement kinematics, permutation-invariant team geometry, and the duration-regularized Viterbi dynamic programming decoder) operate on abstract metric coordinates and state emission matrices, making them fundamentally match-agnostic.
-3. **`MatchConfig` Abstraction:** Match-specific parameters (match identifier, club names, dataset location, frame count, FPS, pitch dimensions, playing/non-play intervals, and tracking slot mappings) are cleanly encapsulated in `phantom11.match_config.MatchConfig`.
-4. **Prerequisites for Additional Matches:**
-   - Other match datasets must provide their own metadata, camera synchronization, and frame offset alignments (or use unified EPTS tracking counters).
-   - Pitch dimensions and frame rate must be calibrated in the `MatchConfig`.
-   - Third-party formats require compatible parsers (e.g., standard FIFA/EPTS raw tracking).
-5. **Honest Scope & No Universal Compatibility Claim:**
-   - Cross-match prediction quality has **not yet been empirically validated** against ground truth outside of the authorized competition match.
-   - We do not claim universal, out-of-the-box compatibility with arbitrary raw formats without appropriate configuration.
-6. **Future Roadmap (Innovation Challenge):**
-   - The upcoming Innovation Challenge extension will leverage this modular configuration to support multi-match tactical analysis, team-style profiling, and comparative possession benchmarking across diverse fixtures and leagues.
-
----
-
-## Reproducing the Submission
-
-To run the complete deterministic pipeline and generate `phantom11_v3.csv`:
-
-```bash
-python run_phantom11.py
+**Expected Validator Output:**
 ```
-
-Or specify custom directories:
-```bash
-python run_phantom11.py --data-dir /path/to/data --output-dir outputs
-```
-
-The output file will be written to:
-`outputs/phantom11_v3.csv`
-
-### Validating the Output
-
-Run the official competition validator:
-
-```bash
-python vendor/more-than-a-hack-2027/evaluation/validate_submission.py outputs/phantom11_v3.csv
-```
-
-Expected output:
-```
-OK    phantom11_v3.csv
+OK    No Data No Goal.csv
       199319 rows, frame 0..199318
+
       label counts
-        H    61241   30.7%
-        A    46121   23.1%
-        D    91957   46.1%
+        H    59351   29.8%
+        A    44467   22.3%
+        D    95501   47.9%
         X        0    0.0%
-      reports 493 possessions of mean 8.7 s
+
+      reports 487 possessions of mean 8.5 s
+
+Valid.
 ```
 
 ### Checksum Verification
+```bash
+sha256sum "outputs/No Data No Goal.csv"
+# Expected: 6acdd06563420e135f154cff29194260f187410aacc5888fe071ccc4e9bfd6c4
+```
 
-The final generated submission has the verified SHA-256 hash:
+### Automated Regression Test Suite
+Run all 66 unit, regression, and cross-match generalisation tests:
+```bash
+python -m unittest discover -s tests -p "test_*.py"
 ```
-289be9ad33748690c6197a4659060a459858e344c78e84dbfdcc51a373952d62  phantom11_v3.csv
-```
+*Expected: `Ran 66 tests in ~0.3s - OK`.*
 
 ---
 
-## Limitations
+## 7. Evaluation & Benchmark Findings
 
-1. **Single-Camera Occlusions:** In broadcast-style occlusions where the ball is hidden for $>6$ seconds without set-piece tags, the continuity module conservatively defaults to Dead Ball (`D`).
-2. **Deflection Nuances:** Fleeting deflections that do not alter the overall team possession trajectory are ignored by the sequence regularizer; intentional micro-touches without established control are intentionally treated as non-possessions.
-3. **Aerial Trajectories:** 2D tracking lacks vertical z-coordinates; high-speed aerial crosses passing over a player may occasionally register low relative 2D distance.
+### Independent Synthetic Benchmark (41 Scenarios Across 7 Suites)
+Evaluated across 41 independent scenarios (aerial passes, volleys, duels, throw-ins, clearances, tracking drops, and boundaries):
+
+| Candidate | Mean SpellF1 (41 Scenarios) | Mean Boundary Timing Error |
+| :--- | :---: | :---: |
+| **v3** (Baseline DP) | 0.6385 | 16.27 frames |
+| **v5** (Flight Handover) | 0.8602 | 11.78 frames |
+| **v6** (Deceleration Gated) | 0.8407 | 12.71 frames |
+| **v7-A** (v6 + Boundary) | 0.8829 | 8.98 frames |
+| **PHANTOM-11 v5-A (Selected)** | **0.9024** | **8.05 frames (322ms)** |
+
+### Public Ground-Truth Diagnostic (7,500 Frames)
+Evaluated across `data/BAR-ATH_possession_gt_public.csv` ([11,185 .. 18,684]):
+* **Multiclass Frame Accuracy:** `v5-A` achieves **`73.72%`** (highest overall; `v5` is `72.39%`, `v6` is `72.33%`).
+* **Dead-Ball Classification:** Precision = **`0.7305`**, Recall = **`0.2491`**, F1 = **`0.3716`** (with 366 True Positives vs 266 in `v5`, $+100\text{ TP}$).
+* **Boundary Precision (Frame 18,026):** On the 101 confirmed out-of-bounds frames, ground truth is `D` on 100/101 frames ($99.01\%$). At frame 18,026, the ball crossed the goal line at $14.9\text{ m/s}$ ($x = -0.795\text{m}$); ground truth switched to `D` at frame 18,027, verifying physical boundary alignment within **$40\text{ms}$ (1 video frame)** of human perception.
+* *Policy Compliance:* Zero parameters or thresholds were tuned against this public window.
 
 ---
 
-## Licensing & Attribution
+## 8. Limitations & Scientific Scope
 
-- Source code in this repository is licensed under the [MIT License](LICENSE).
-- Built for **More Than A Hack 2027** organized by Metrica Sports.
-- Match assets (tracking data, tactical video, smart tagging) are licensed separately under Metrica Sports competition terms and are **not** redistributed here.
+1. **Unobserved Private Ground-Truth Score:** The competition's private full-match ground truth remains strictly unobserved. Synthetic benchmark scores ($0.9024$) represent diagnostic proxies under controlled scenarios, not official private competition scores.
+2. **Official Baseline to Beat:** The official published baseline to outperform is **`0.2433` on private full-match spellF1**. We make no premature claims of leaderboard ranking or top-20 qualification.
+3. **Camera Elevation Parallax:** High aerial balls crossing the touchline in 2D tracking exhibit optical parallax from stadium camera elevation that cannot be fully modeled without 3D camera elevation metadata.
+4. **Out-of-Stadium Occlusions:** Tracking dropouts (`NaN`) outside the pitch are handled by sequence continuity once the ball leaves camera view.
+
+---
+
+## 9. Technical Documentation & Reports
+
+Detailed technical documentation and audit reports are preserved in `docs/`:
+* [docs/No Data No Goal.md](docs/No%20Data%20No%20Goal.md): Complete technical paper prepared for the competition submission form.
+* [docs/TECHNICAL_DOCUMENT.md](docs/TECHNICAL_DOCUMENT.md): Comprehensive technical reference paper.
+* [docs/STEP18_FINAL_GENERALISATION_AUDIT.md](docs/STEP18_FINAL_GENERALISATION_AUDIT.md): Final generalisation, fragmentation, and public GT audit.
+* [docs/STEP17_FINAL_CANDIDATE_COMPARISON.md](docs/STEP17_FINAL_CANDIDATE_COMPARISON.md): Step 17 comparative candidate evaluation.
+
+---
+
+## 10. Team & Licensing
+
+* **Team Name:** **No Data No Goal**
+* **Algorithm:** **PHANTOM-11**
+* **Competition:** More Than A Hack 2027 (Metrica Sports)
+* **Code License:** [MIT License](LICENSE)
+* **Data Notice:** Match assets are licensed under Metrica Sports competition terms and are **not** redistributed here.
