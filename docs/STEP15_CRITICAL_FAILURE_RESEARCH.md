@@ -78,7 +78,7 @@ Adversarial CE3: Clearance Directly Out of Bounds       | 0.5333     | Model Des
 
 ## 3. Task 2: Empirical Audit of False Carrier Detection
 
-We developed and executed an automated carrier audit harness ([`tests/audit_carrier_detection.py`](file:///Users/harshu/Desktop/PHANTOM-11/PHANTOM11-public/tests/audit_carrier_detection.py)) testing `detect_ball_carrier` against six representative football situations:
+We developed and executed an automated carrier audit harness ([`tests/audit_carrier_detection.py`](tests/audit_carrier_detection.py)) testing `detect_ball_carrier` against six representative football situations:
 
 ```
 =====================================================================================
@@ -204,7 +204,7 @@ Rather than introducing complex heuristic rules, a minimal, auditable v7 candida
    In `detect_ball_carrier`: for moving balls ($v_{\text{ball}} > 3.5\text{ m/s}$), require $d \le 1.2\text{m}$ (reduced from $2.0\text{m}$) and $\Delta v_{\text{rel}} \le 1.5\text{ m/s}$ (reduced from $2.5\text{ m/s}$).
 
 ### 6.3 Empirical Feasibility Test Results
-We tested this minimal concept on our test scenarios using a scratch script ([`tests/test_v7_concept_feasibility.py`](file:///Users/harshu/Desktop/PHANTOM-11/PHANTOM11-public/tests/test_v7_concept_feasibility.py)):
+We tested this minimal concept on our test scenarios using a scratch script ([`tests/test_v7_concept_feasibility.py`](tests/test_v7_concept_feasibility.py)):
 * `Dev-02 (Throw-In Setup)`: jumped from `0.8000` to **`1.0000`** (+0.2000).
 * `Dev-03 (Clearance Out of Bounds)`: jumped from `0.6000` to **`1.0000`** (+0.4000).
 * `Holdout-03 (Slide Tackle Over Touchline)`: jumped from `0.6000` to **`1.0000`** (+0.4000).

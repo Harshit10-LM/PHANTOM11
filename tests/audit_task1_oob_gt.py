@@ -12,11 +12,13 @@ import pandas as pd
 from phantom11.match_config import MatchConfig
 from phantom11.load_tracking import load_full_tracking
 from phantom11.pitch_boundary import compute_out_of_bounds_distance, detect_out_of_bounds_mask
+from phantom11.path_resolver import resolve_official_repo
 
 cfg = MatchConfig.from_official_game()
 ball_xy, ball_present, players_xy, _, team_of_track, pitch, _ = load_full_tracking(match_config=cfg)
 
-gt_path = "/Users/harshu/Desktop/PHANTOM-11/more-than-a-hack-2027/evaluation/gt/BAR-ATH_possession_gt_public.csv"
+official_dir = resolve_official_repo()
+gt_path = os.path.join(official_dir, "evaluation", "gt", "BAR-ATH_possession_gt_public.csv")
 gt_df = pd.read_csv(gt_path)
 gt_labels = gt_df["label"].values.astype("<U1")
 gt_frames = gt_df["frame"].values

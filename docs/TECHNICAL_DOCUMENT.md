@@ -1,13 +1,12 @@
 # No Data No Goal — PHANTOM-11
 ## Technical Submission Documentation — More Than A Hack 2027
 
-**Team Name:** No Data No Goal  
-**Algorithm Name:** PHANTOM-11 (Candidate v5-A)  
-**Competition:** More Than A Hack 2027 (Metrica Sports)  
-**Official Submission File:** `outputs/No Data No Goal.csv`  
-**Verified SHA-256 Checksum:** `6acdd06563420e135f154cff29194260f187410aacc5888fe071ccc4e9bfd6c4`  
-**Format Validator Status:** `PASSED (199,319 rows, frame 0..199318, 487 active spells, mean duration 8.5s)`  
-**Baseline to Outperform:** Official private full-match baseline = `0.2433`  
+| Competition Specification | Verification Details |
+| :--- | :--- |
+| **Team Name:** No Data No Goal | **Algorithm:** PHANTOM-11 (Candidate v5-A) |
+| **Competition:** More Than A Hack 2027 (Metrica Sports) | **Baseline to Outperform:** Official private full-match baseline = `0.2433` |
+| **Official Submission File:** `outputs/No Data No Goal.csv` | **Format Validator Status:** `PASSED (199,319 rows, frame 0..199318, 487 active spells)` |
+| **Verified SHA-256 Checksum:** `6acdd06563420e135f154cff29194260f187410aacc5888fe071ccc4e9bfd6c4` | **Active Frame Coverage:** 100% deterministic (0 `X` abstentions on active play) |
 
 ---
 
@@ -57,7 +56,7 @@ Raw Tracking ATD (199,319 frames) + Smart Tagging Timeline
    Official Submission: outputs/No Data No Goal.csv (199,319 frames)
 ```
 
----
+<div class="page-break"></div>
 
 ## 2. Core Algorithmic Components
 
@@ -87,7 +86,7 @@ $$\text{margin} = r_{\text{ball}} (0.11\text{m}) + w_{\text{line}} (0.12\text{m}
 * Missing ball observations (`NaN`) strictly assign $d_{\text{oob}} = 0.0\text{m}$, preventing missing tracking from ever falsely declaring Dead Ball.
 * Full-match non-play intervals (pre-match, halftime, post-match) are strictly enforced as $100\%$ Dead Ball (`D`).
 
----
+<div class="page-break"></div>
 
 ## 3. Evaluation & Validation Evidence
 
@@ -109,7 +108,7 @@ Evaluated across `BAR-ATH_possession_gt_public.csv` ([11,185 .. 18,684]) using `
 * **Boundary Crossing Precision (Frame 18,026):** On the 101 confirmed out-of-bounds frames, ground truth is `D` on 100/101 frames ($99.01\%$). At frame 18,026, the ball crossed the goal line at $14.9\text{ m/s}$ ($x = -0.795\text{m}$); ground truth switched to `D` at frame 18,027, verifying physical boundary alignment within **$40\text{ms}$ (1 video frame)** of human perception.
 * *Policy Compliance:* Zero parameters or thresholds were tuned against this public window.
 
----
+<div class="page-break"></div>
 
 ## 4. Multi-Match Independence & Known Limitations
 

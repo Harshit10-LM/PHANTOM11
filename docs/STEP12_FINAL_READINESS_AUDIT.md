@@ -148,7 +148,7 @@ Byte-for-byte identical? TRUE
   ```
 
 ### 5.2 Repository Security & License Audit
-- **Public Git Repository:** `~/Desktop/PHANTOM-11/PHANTOM11-public`
+- **Public Git Repository:** `https://github.com/Harshit10-LM/PHANTOM11`
 - **Data Protection:** All tracking files (`*_tactical_atd.txt`, `*_homography.csv`, `*.mp4`, etc.) are covered by `.gitignore`. Zero bytes of licensed competition data are staged or tracked.
 - **Output Protection:** `outputs/` is strictly ignored by `.gitignore`. No generated prediction CSVs or logs are tracked.
 - **Secrets Audit:** Zero API keys, passwords, or credentials exist in the codebase.

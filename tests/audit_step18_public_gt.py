@@ -22,7 +22,8 @@ resolve_official_repo()
 import possession_metrics as pm
 
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "outputs")
-GT_PATH = "/Users/harshu/Desktop/PHANTOM-11/more-than-a-hack-2027/evaluation/gt/BAR-ATH_possession_gt_public.csv"
+official_dir = resolve_official_repo()
+GT_PATH = os.path.join(official_dir, "evaluation", "gt", "BAR-ATH_possession_gt_public.csv")
 
 gt_df = pd.read_csv(GT_PATH)
 gt_full = gt_df["label"].values.astype("<U1")

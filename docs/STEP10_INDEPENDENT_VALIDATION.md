@@ -67,7 +67,7 @@ When an optical tracker swaps slot IDs between two players, single-frame displac
 
 ## 3. Independent Synthetic Evaluation Benchmark
 
-To evaluate generalisation without peeking at the competition's private ground truth, we created a held-out synthetic test suite ([tests/independent_validation.py](file:///Users/harshu/Desktop/PHANTOM-11/PHANTOM11-public/tests/independent_validation.py)) containing 9 diverse physical scenarios with objectively verified ground truth:
+To evaluate generalisation without peeking at the competition's private ground truth, we created a held-out synthetic test suite ([`tests/independent_validation.py`](tests/independent_validation.py)) containing 9 diverse physical scenarios with objectively verified ground truth:
 
 ```
 Scenario 1: One-Touch Interception          (H passes, A volleys forward, A controls)

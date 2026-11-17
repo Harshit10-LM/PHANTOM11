@@ -310,4 +310,4 @@ The only medium-priority concern is the **141 H↔A cross-flips** in 5 recovered
 
 ---
 
-*All commands and outputs in this audit were run against the actual data and source files in `/Users/harshu/Desktop/PHANTOM-11/more-than-a-hack-2027/`. No ground-truth labels were consulted.*
+*All commands and outputs in this audit were run against the actual data and source files in `../more-than-a-hack-2027/`. No ground-truth labels were consulted.*
