@@ -208,7 +208,7 @@ Evaluated across `data/BAR-ATH_possession_gt_public.csv` ([11,185 .. 18,684]):
 ## 8. Limitations & Scientific Scope
 
 1. **Unobserved Private Ground-Truth Score:** The competition's private full-match ground truth remains strictly unobserved. Synthetic benchmark scores ($0.9024$) represent diagnostic proxies under controlled scenarios, not official private competition scores.
-2. **Official Baseline to Beat:** The official published baseline to outperform is **`0.2433` on private full-match spellF1**. We make no premature claims of leaderboard ranking or top-20 qualification.
+2. **Official Baseline to Beat:** The official published baseline to outperform is **`0.2433` on private full-match spellF1**.
 3. **Camera Elevation Parallax:** High aerial balls crossing the touchline in 2D tracking exhibit optical parallax from stadium camera elevation that cannot be fully modeled without 3D camera elevation metadata.
 4. **Out-of-Stadium Occlusions:** Tracking dropouts (`NaN`) outside the pitch are handled by sequence continuity once the ball leaves camera view.
 
